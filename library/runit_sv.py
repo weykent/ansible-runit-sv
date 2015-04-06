@@ -180,8 +180,8 @@ rmdir = functools.partial(
     RemoveThing, stat_type='S_ISDIR', remover=shutil.rmtree)
 
 
-def main():
-    module = AnsibleModule(
+def main(module_cls):
+    module = module_cls(
         argument_spec=dict(
             name=dict(required=True),
             sv_directory=dict(default=['/etc/sv']),
@@ -301,10 +301,8 @@ def main():
     module.exit_json(paths=paths, changed=True)
 
 
-if os.environ.get('RUNIT_SV_COVERAGE'):
-    import coverage
-    coverage.process_startup()
-
-
-from ansible.module_utils.basic import *
-main()
+# This is some gross-ass ansible magic. Don't look too closely at the pragmas
+# or you'll notice there's a double comment.
+#<<INCLUDE_ANSIBLE_MODULE_COMMON>>  # flake8: noqa
+if __name__ == '__main__':  # pragma: nocover
+    main(AnsibleModule)  # noqa
