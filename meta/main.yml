@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  author: weykent
+  description:
+    A role providing the 'runit_sv' module for management of runit service
+    directories.
+  license: ISC
+  min_ansible_version: 1.8
+  platforms:
+    - name: GenericUNIX
+      versions:
+        - all
+  categories:
+    - system
+
+dependencies: []

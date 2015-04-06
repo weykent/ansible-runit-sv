@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Copyright (c) weykent <weykent@weasyl.com>
+# See COPYING for details.
 
 import errno
 import functools

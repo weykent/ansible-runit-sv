@@ -1,3 +1,6 @@
+# Copyright (c) weykent <weykent@weasyl.com>
+# See COPYING for details.
+
 import pytest
 
 import runit_sv as _runit_sv_module
