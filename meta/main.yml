@@ -5,7 +5,7 @@ galaxy_info:
     A role providing the 'runit_sv' module for management of runit service
     directories.
   license: ISC
-  min_ansible_version: 1.8
+  min_ansible_version: 1.3
   platforms:
     - name: GenericUNIX
       versions:

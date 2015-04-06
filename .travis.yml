@@ -1,5 +1,15 @@
 language: 'python'
 python: '2.7'
+
+env:
+  - TOXENV=py27-ansible13
+  - TOXENV=py27-ansible14
+  - TOXENV=py27-ansible15
+  - TOXENV=py27-ansible16
+  - TOXENV=py27-ansible17
+  - TOXENV=py27-ansible18
+  - TOXENV=py27-ansible19
+
 install: 'pip install tox coveralls'
 script:
   - 'tox -- -rs'
