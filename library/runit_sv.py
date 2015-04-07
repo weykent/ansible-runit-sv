@@ -201,6 +201,7 @@ def main(module_cls):
             lsb_service=dict(choices=['present', 'absent']),
             umask=dict(type='int', default=0o022),
         ),
+        supports_check_mode=True,
     )
 
     def first_directory_or_fail(name):
@@ -296,6 +297,8 @@ def main(module_cls):
     paths = {outfile.path: outfile.must_change for outfile in outfiles}
     if not any(outfile.must_change for outfile in outfiles):
         module.exit_json(paths=paths, changed=False)
+    elif module.check_mode:
+        module.exit_json(paths=paths, changed=True)
 
     for outfile in outfiles:
         outfile.commit()

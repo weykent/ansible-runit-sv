@@ -22,10 +22,11 @@ class FakeAnsibleModuleBailout(Exception):
 
 
 class FakeAnsibleModule(object):
-    def __init__(self, params):
+    def __init__(self, params, check_mode):
         self.params = params
+        self.check_mode = check_mode
 
-    def __call__(self, argument_spec):
+    def __call__(self, argument_spec, supports_check_mode):
         self.argument_spec = argument_spec
         for name, spec in self.argument_spec.iteritems():
             if name not in self.params:
@@ -45,6 +46,8 @@ def runit_sv(request):
         ansible_module = request.getfuncargvalue('ansible_module')
 
         def do(**params):
+            if params.get('_check'):
+                pytest.skip("can't do check-mode tests with real ansible")
             should_fail = params.pop('_should_fail', False)
             contacted = ansible_module.runit_sv(**params)
             if should_fail:
@@ -55,7 +58,8 @@ def runit_sv(request):
     elif request.param == 'fake':
         def do(**params):
             should_fail = params.pop('_should_fail', False)
-            module = FakeAnsibleModule(params)
+            check = params.pop('_check', False)
+            module = FakeAnsibleModule(params, check)
             with pytest.raises(FakeAnsibleModuleBailout) as excinfo:
                 _runit_sv_module.main(module)
             assert excinfo.value.success != should_fail
@@ -328,3 +332,17 @@ def test_down_state(runit_sv, basedir):
     assert_file(sv.join('down'), contents='', mode=0o644)
     assert basedir.join('service', 'testsv').readlink() == sv.strpath
     assert basedir.join('init.d', 'testsv').readlink() == '/usr/bin/sv'
+
+
+def test_check_skips_everything(runit_sv, basedir):
+    """
+    If the module is run in check mode, nothing is done.
+    """
+    runit_sv(
+        _check=True,
+        name='testsv',
+        runscript='spam eggs',
+        **base_directories(basedir))
+    assert len(basedir.join('sv').listdir()
+               + basedir.join('service').listdir()
+               + basedir.join('init.d').listdir()) == 0
