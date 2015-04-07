@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # Copyright (c) weykent <weykent@weasyl.com>
 # See COPYING for details.
 
