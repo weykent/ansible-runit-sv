@@ -46,9 +46,10 @@ def runit_sv(request):
         ansible_module = request.getfuncargvalue('ansible_module')
 
         def do(**params):
-            if params.get('_check'):
-                pytest.skip("can't do check-mode tests with real ansible")
             should_fail = params.pop('_should_fail', False)
+            params['_runner_kwargs'] = {
+                'check': params.pop('_check', False),
+            }
             contacted = ansible_module.runit_sv(**params)
             if should_fail:
                 assert_local_failure(contacted)
