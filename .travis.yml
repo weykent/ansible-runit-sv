@@ -1,5 +1,6 @@
 language: 'python'
 python: '2.7'
+sudo: false
 
 env:
   - TOXENV=py27-ansible13
@@ -10,7 +11,9 @@ env:
   - TOXENV=py27-ansible18
   - TOXENV=py27-ansible19
 
-install: 'pip install tox coveralls'
+install:
+  - 'pip install tox coveralls'
+  - 'cp .travis/ansible.cfg ~/.ansible.cfg'
 script:
   - 'tox -- -rs'
   - 'coveralls'
