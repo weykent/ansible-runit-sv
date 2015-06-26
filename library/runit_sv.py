@@ -15,6 +15,10 @@ EXECUTABLE = 0o777
 NONEXECUTABLE = 0o666
 
 
+def settable_mode(m):
+    return m & 0o7777
+
+
 def first_directory(directories):
     for d in directories:
         try:
@@ -75,7 +79,9 @@ class FileRecord(object):
             if self.content is None:
                 return True
             content_hash = hashlib.sha256(self.content).hexdigest()
-            return content_hash != current_hash or self.mode != current_mode
+            return (
+                content_hash != current_hash
+                or self.mode != settable_mode(current_mode))
 
     def check_if_must_change(self):
         self.must_change = self._must_change_p()
