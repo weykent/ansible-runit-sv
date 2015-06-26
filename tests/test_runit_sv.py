@@ -6,6 +6,18 @@ import pytest
 import runit_sv as _runit_sv_module
 
 
+idempotent = pytest.mark.idempotent
+
+
+def pytest_generate_tests(metafunc):
+    if 'idempotency_state' not in metafunc.fixturenames:
+        return
+    states = ['regular']
+    if getattr(metafunc.function, 'idempotent', False):
+        states.append('checked')
+    metafunc.parametrize(('idempotency_state'), states)
+
+
 def assert_no_local_failure(contacted):
     assert not contacted['local'].get('failed')
 
@@ -40,8 +52,26 @@ class FakeAnsibleModule(object):
         raise FakeAnsibleModuleBailout(success=False, params=params)
 
 
+def setup_change_checker(params):
+    must_change = params.pop('_must_change', False)
+    must_not_change = params.pop('_must_not_change', False)
+    if must_change and must_not_change:
+        raise ValueError('invalid request: must change and must not change')
+
+    if must_change:
+        def check(changed):
+            assert changed
+    elif must_not_change:
+        def check(changed):
+            assert not changed
+    else:
+        check = None
+
+    return check
+
+
 @pytest.fixture(params=['real', 'fake'])
-def runit_sv(request):
+def runit_sv(request, idempotency_state):
     if request.param == 'real':
         ansible_module = request.getfuncargvalue('ansible_module')
 
@@ -50,23 +80,36 @@ def runit_sv(request):
             params['_runner_kwargs'] = {
                 'check': params.pop('_check', False),
             }
+            check_change = setup_change_checker(params)
             contacted = ansible_module.runit_sv(**params)
             if should_fail:
                 assert_local_failure(contacted)
             else:
                 assert_no_local_failure(contacted)
+            if check_change is not None:
+                check_change(contacted['local']['changed'])
 
     elif request.param == 'fake':
         def do(**params):
             should_fail = params.pop('_should_fail', False)
             check = params.pop('_check', False)
+            check_change = setup_change_checker(params)
             module = FakeAnsibleModule(params, check)
             with pytest.raises(FakeAnsibleModuleBailout) as excinfo:
                 _runit_sv_module.main(module)
             assert excinfo.value.success != should_fail
+            if check_change is not None:
+                check_change(excinfo.value.params['changed'])
 
     else:
         raise ValueError('unknown param', request.param)
+
+    if idempotency_state == 'checked':
+        _do = do
+
+        def do(**params):
+            _do(_must_change=True, **params)
+            _do(_must_not_change=True, **params)
 
     return do
 
@@ -95,6 +138,7 @@ def assert_file(path, contents, mode):
     assert path.read() == contents and settable_mode(path) == mode
 
 
+@idempotent
 def test_basic_runscript(runit_sv, basedir):
     """
     A basic invocation with name and runscript creates the sv directory
@@ -112,6 +156,7 @@ def test_basic_runscript(runit_sv, basedir):
     assert basedir.join('init.d', 'testsv').readlink() == '/usr/bin/sv'
 
 
+@idempotent
 def test_log_runscript(runit_sv, basedir):
     """
     Adding a log_runscript creates a log/run script as well.
@@ -126,6 +171,7 @@ def test_log_runscript(runit_sv, basedir):
     assert_file(sv_log.join('run'), contents='eggs spam', mode=0o755)
 
 
+@idempotent
 def test_supervise_link(runit_sv, basedir):
     """
     The supervise_link option will create a link to some arbitrary location.
@@ -140,6 +186,7 @@ def test_supervise_link(runit_sv, basedir):
     assert sv.join('supervise').readlink() == '/spam/eggs'
 
 
+@idempotent
 def test_log_supervise_link(runit_sv, basedir):
     """
     The log_supervise_link option will also create a link to some arbitrary
@@ -156,6 +203,7 @@ def test_log_supervise_link(runit_sv, basedir):
     assert sv_log.join('supervise').readlink() == '/eggs/spam'
 
 
+@idempotent
 def test_extra_files(runit_sv, basedir):
     """
     Adding extra_files will copy additional files into the sv directory.
@@ -174,6 +222,7 @@ def test_extra_files(runit_sv, basedir):
     assert_file(sv.join('eggs'), contents='spam', mode=0o644)
 
 
+@idempotent
 def test_extra_scripts(runit_sv, basedir):
     """
     Adding extra_scripts will copy additional scripts into the sv directory.
@@ -192,6 +241,7 @@ def test_extra_scripts(runit_sv, basedir):
     assert_file(sv.join('eggs'), contents='spam', mode=0o755)
 
 
+@idempotent
 def test_extra_files_and_scripts(runit_sv, basedir):
     """
     Adding extra_files and extra_scripts both will create both additional files
@@ -250,6 +300,7 @@ def test_no_overlapping_extra_scripts_with_runscripts(runit_sv, basedir):
         **base_directories(basedir))
 
 
+@idempotent
 def test_extra_files_and_scripts_with_umask(runit_sv, basedir):
     """
     Setting a umask will mask the modes used on all files.
@@ -272,6 +323,7 @@ def test_extra_files_and_scripts_with_umask(runit_sv, basedir):
     assert_file(sv.join('run'), contents='spam eggs', mode=0o770)
 
 
+@idempotent
 def test_envdir(runit_sv, basedir):
     """
     Adding an envdir option will create an env directory.
@@ -290,6 +342,7 @@ def test_envdir(runit_sv, basedir):
     assert_file(envdir.join('eggs'), contents='spam', mode=0o644)
 
 
+@idempotent
 def test_no_lsb_service(runit_sv, basedir):
     """
     Setting lsb_service=absent will prevent the creation of an LSB-style init.d
@@ -303,6 +356,7 @@ def test_no_lsb_service(runit_sv, basedir):
     assert not basedir.join('init.d', 'testsv').exists()
 
 
+@idempotent
 def test_no_lsb_service_or_service_directory(runit_sv, basedir):
     """
     Setting state=absent will prevent the creation of both a service directory
@@ -317,6 +371,7 @@ def test_no_lsb_service_or_service_directory(runit_sv, basedir):
     assert not basedir.join('init.d', 'testsv').exists()
 
 
+@idempotent
 def test_down_state(runit_sv, basedir):
     """
     Setting state=down creates everything as usual, but marks a service as down
