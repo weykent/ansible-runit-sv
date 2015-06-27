@@ -312,8 +312,8 @@ def main(module_cls):
     module.exit_json(paths=paths, changed=True)
 
 
-# This is some gross-ass ansible magic. Don't look too closely at the pragmas
-# or you'll notice there's a double comment.
-#<<INCLUDE_ANSIBLE_MODULE_COMMON>>  # flake8: noqa
+# This is some gross-ass ansible magic. Unfortunately noqa can't be applied for
+# E265, so it had to be disabled in setup.cfg.
+#<<INCLUDE_ANSIBLE_MODULE_COMMON>>
 if __name__ == '__main__':  # pragma: nocover
     main(AnsibleModule)  # noqa
