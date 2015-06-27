@@ -24,9 +24,9 @@ def first_directory(directories):
         try:
             s = os.lstat(d)
         except OSError as e:
-            if e.errno == errno.ENOENT:
-                continue
-            raise
+            if e.errno != errno.ENOENT:
+                raise
+            continue
         if not stat.S_ISDIR(s.st_mode):
             continue
         return d
@@ -37,9 +37,9 @@ def hash_file(path, chunksize=4096):
     try:
         infile = open(path, 'rb')
     except IOError as e:
-        if e.errno == errno.ENOENT:
-            return None, None
-        raise
+        if e.errno != errno.ENOENT:
+            raise
+        return None, None
     hasher = hashlib.sha256()
     with infile:
         while True:
@@ -166,9 +166,9 @@ class RemoveThing(object):
         try:
             s = os.lstat(self.path)
         except OSError as e:
-            if e.errno == errno.ENOENT:
-                return False
-            raise
+            if e.errno != errno.ENOENT:
+                raise
+            return False
         if not getattr(stat, self.stat_type)(s.st_mode):
             raise NotAThingError(self.path, 'does not match', self.stat_type)
         return True
@@ -292,9 +292,9 @@ def main(module_cls):
         try:
             directory_paths = os.listdir(to_clear)
         except OSError as e:
-            if e.errno == errno.ENOENT:
-                continue
-            raise
+            if e.errno != errno.ENOENT:
+                raise
+            continue
         directory_paths = {os.path.join(to_clear, p) for p in directory_paths}
         outfiles.extend(rm(path) for path in directory_paths - paths_set)
 
