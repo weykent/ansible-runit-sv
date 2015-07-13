@@ -9,14 +9,16 @@ import os
 import shutil
 import stat
 import tempfile
+import traceback
 
 
 EXECUTABLE = 0o777
 NONEXECUTABLE = 0o666
+SETTABLE_MASK = 0o7777
 
 
 def settable_mode(m):
-    return m & 0o7777
+    return m & SETTABLE_MASK
 
 
 def first_directory(directories):
@@ -104,6 +106,10 @@ class FileRecord(object):
         self.changed = True
 
 
+class PathAlreadyExistsError(Exception):
+    pass
+
+
 class LinkRecord(object):
     def __init__(self, path, target=None, dir_ok=False):
         self.path = path
@@ -123,9 +129,12 @@ class LinkRecord(object):
             if e.errno == errno.ENOENT:
                 return self.target is not None
             elif e.errno == errno.EINVAL:
-                if self.dir_ok and os.path.isdir(self.path):
+                if (
+                        self.target is not None and self.dir_ok
+                        and os.path.isdir(self.path)):
                     return False
-                return self.target is None
+                else:
+                    raise PathAlreadyExistsError(self.path)
             raise
         return self.target != current_target
 
@@ -141,6 +150,7 @@ class LinkRecord(object):
             if e.errno != errno.ENOENT:
                 raise
         if self.target is not None:
+            makedirs_exist_ok(os.path.dirname(self.path))
             os.symlink(self.target, self.path)
         self.changed = True
 
@@ -210,6 +220,14 @@ def main(module_cls):
         supports_check_mode=True,
     )
 
+    try:
+        _main(module)
+    except Exception:
+        module.fail_json(
+            msg='unhandled exception', traceback=traceback.format_exc())
+
+
+def _main(module):
     def first_directory_or_fail(name):
         directories = module.params[name]
         ret = first_directory(directories)

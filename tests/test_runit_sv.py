@@ -6,6 +6,7 @@ import pytest
 import runit_sv as _runit_sv_module
 
 
+SETTABLE_MASK = _runit_sv_module.SETTABLE_MASK
 idempotent = pytest.mark.idempotent
 
 
@@ -26,7 +27,7 @@ def assert_local_failure(contacted):
     assert contacted['local'].get('failed')
 
 
-class FakeAnsibleModuleBailout(Exception):
+class FakeAnsibleModuleBailout(BaseException):
     def __init__(self, success, params):
         super(FakeAnsibleModuleBailout, self).__init__(success, params)
         self.success = success
@@ -131,7 +132,7 @@ def base_directories(basedir, **overrides):
 
 
 def settable_mode(path):
-    return path.stat().mode & 0o7777
+    return path.stat().mode & SETTABLE_MASK
 
 
 def assert_file(path, contents, mode):
@@ -402,3 +403,43 @@ def test_check_skips_everything(runit_sv, basedir):
     assert len(basedir.join('sv').listdir()
                + basedir.join('service').listdir()
                + basedir.join('init.d').listdir()) == 0
+
+
+def test_log_supervise_link_without_log_runscript(runit_sv, basedir):
+    """
+    If log_supervise_link is specified without log_runscript also specified,
+    the module will fail.
+    """
+    runit_sv(
+        _should_fail=True,
+        name='testsv',
+        runscript='spam eggs',
+        log_supervise_link='/eggs/spam',
+        **base_directories(basedir))
+
+
+def test_lsb_service_present_with_state_absent(runit_sv, basedir):
+    """
+    If lsb_service is set to present when state is set to absent, the module
+    will fail.
+    """
+    runit_sv(
+        _should_fail=True,
+        name='testsv',
+        runscript='spam eggs',
+        lsb_service='present',
+        state='absent',
+        **base_directories(basedir))
+
+
+def test_lsb_service_present_with_no_init_d(runit_sv, basedir):
+    """
+    If lsb_service is set to present when there are no init.d directories, the
+    module will fail.
+    """
+    runit_sv(
+        _should_fail=True,
+        name='testsv',
+        runscript='spam eggs',
+        lsb_service='present',
+        **base_directories(basedir, init_d_directory=[]))
