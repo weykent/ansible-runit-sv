@@ -257,10 +257,10 @@ def _main(module):
         outfiles.append(
             exe(sv('log', 'run'), content=module.params['log_runscript']))
         directories_to_clear.append(sv('log'))
-    for name, content in module.params['extra_files'].iteritems():
-        outfiles.append(nexe(sv(name), content=content))
-    for name, content in module.params['extra_scripts'].iteritems():
-        outfiles.append(exe(sv(name), content=content))
+    for filename, content in module.params['extra_files'].iteritems():
+        outfiles.append(nexe(sv(filename), content=content))
+    for filename, content in module.params['extra_scripts'].iteritems():
+        outfiles.append(exe(sv(filename), content=content))
     envdir = module.params['envdir']
     if envdir is None:
         outfiles.append(rmdir(sv('env')))

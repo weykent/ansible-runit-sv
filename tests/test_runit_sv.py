@@ -472,3 +472,24 @@ def test_log_supervise_already_exists(runit_sv, basedir):
         log_runscript='eggs spam',
         **base_directories(basedir))
     assert log_supervise.check(dir=True)
+
+
+@idempotent
+@pytest.mark.parametrize('extra_stuff', ['extra_files', 'extra_scripts'])
+def test_extra_stuff_does_not_clobber_service_names(
+        runit_sv, basedir, extra_stuff):
+    """
+    Passing extra_files or extra_scripts does not interfere with the creation
+    of the service or init.d links.
+
+    This is a regression test; at one point, this failed.
+    """
+    kwargs = base_directories(basedir)
+    kwargs[extra_stuff] = {'spam': 'eggs'}
+    runit_sv(
+        name='testsv',
+        runscript='spam eggs',
+        **kwargs)
+    sv = basedir.join('sv', 'testsv')
+    assert basedir.join('service', 'testsv').readlink() == sv.strpath
+    assert basedir.join('init.d', 'testsv').readlink() == '/usr/bin/sv'
