@@ -129,9 +129,7 @@ class LinkRecord(object):
             if e.errno == errno.ENOENT:
                 return self.target is not None
             elif e.errno == errno.EINVAL:
-                if (
-                        self.target is not None and self.dir_ok
-                        and os.path.isdir(self.path)):
+                if self.dir_ok and os.path.isdir(self.path):
                     return False
                 else:
                     raise PathAlreadyExistsError(self.path)

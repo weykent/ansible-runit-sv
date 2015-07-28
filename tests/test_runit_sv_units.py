@@ -305,7 +305,6 @@ test_linkrecord_check_if_must_change = apply_decorators(
         (symlink('l', 'target'), None, True),
         (empty_file('l'), 'target', 'error'),
         (empty_file('l'), None, 'error'),
-        (mkdir('l'), None, 'error'),
     ]),
     pytest.mark.parametrize('dir_ok', [True, False]),
 )
@@ -314,6 +313,8 @@ test_linkrecord_check_if_must_change_with_dir_ok = apply_decorators(
     _test_linkrecord_check_if_must_change,
     copy,
     pytest.mark.parametrize(('ops', 'target', 'dir_ok', 'expected'), [
+        (mkdir('l'), None, False, 'error'),
+        (mkdir('l'), None, True, False),
         (mkdir('l'), 'target', False, 'error'),
         (mkdir('l'), 'target', True, False),
     ]),

@@ -443,3 +443,32 @@ def test_lsb_service_present_with_no_init_d(runit_sv, basedir):
         runscript='spam eggs',
         lsb_service='present',
         **base_directories(basedir, init_d_directory=[]))
+
+
+def test_supervise_already_exists(runit_sv, basedir):
+    """
+    If a supervise directory is in the service directory, it will continue to
+    exist there after runit_sv finishes running.
+    """
+    supervise = basedir.join('sv', 'testsv', 'supervise')
+    supervise.ensure(dir=True)
+    runit_sv(
+        name='testsv',
+        runscript='spam eggs',
+        **base_directories(basedir))
+    assert supervise.check(dir=True)
+
+
+def test_log_supervise_already_exists(runit_sv, basedir):
+    """
+    If a supervise directory is in the service's log directory, it will
+    continue to exist there after runit_sv finishes running.
+    """
+    log_supervise = basedir.join('sv', 'testsv', 'log', 'supervise')
+    log_supervise.ensure(dir=True)
+    runit_sv(
+        name='testsv',
+        runscript='spam eggs',
+        log_runscript='eggs spam',
+        **base_directories(basedir))
+    assert log_supervise.check(dir=True)
