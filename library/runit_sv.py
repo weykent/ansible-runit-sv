@@ -61,6 +61,10 @@ def makedirs_exist_ok(path):
             raise
 
 
+class FileDoesNotExistError(Exception):
+    pass
+
+
 class FileRecord(object):
     def __init__(self, path, mode, content=None):
         self.path = path
@@ -80,9 +84,13 @@ class FileRecord(object):
         else:
             if self.content is None:
                 return True
-            content_hash = hashlib.sha256(self.content).hexdigest()
+            elif self.content is True:
+                content_matches = True
+            else:
+                content_matches = (
+                    hashlib.sha256(self.content).hexdigest() == current_hash)
             return (
-                content_hash != current_hash
+                not content_matches
                 or self.mode != settable_mode(current_mode))
 
     def check_if_must_change(self):
@@ -97,6 +105,10 @@ class FileRecord(object):
             except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
+        elif self.content is True:
+            if not os.path.exists(self.path):
+                raise FileDoesNotExistError(self.path)
+            os.chmod(self.path, self.mode)
         else:
             makedirs_exist_ok(os.path.dirname(self.path))
             with tempfile.NamedTemporaryFile(delete=False) as outfile:
