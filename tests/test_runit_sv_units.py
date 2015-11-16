@@ -190,6 +190,9 @@ def test_makedirs_exist_ok_propagates_makedirs_exceptions(tmpdir):
     (simple_file('f', 'spam'), 'spam', False),
     (empty_file('f'), 'spam', True),
     (simple_file('f', 'spam'), '', True),
+    ('f', True, True),
+    (simple_file('f', 'spam'), True, False),
+    (empty_file('f'), True, False),
 ])
 @pytest.mark.parametrize(('set_mode', 'check_mode', 'mode_expected'), [
     (0o644, 0o644, False),
@@ -249,6 +252,42 @@ def test_filerecord_commit(tmpdir, initial_state, mode, content, must_change):
         else:
             assert pp.read() == content
             assert pp.stat().mode & runit_sv.SETTABLE_MASK == mode
+        assert fr.changed
+    else:
+        assert not fr.changed
+
+
+@pytest.mark.parametrize('initial_state', [
+    'f',
+    'd/f',
+    'd1/d2/f',
+    empty_file('f'),
+    simple_file('f', 'spam'),
+    symlink('f', 'target'),
+])
+@pytest.mark.parametrize('mode', [0o644, 0o755, 0o600, 0o700])
+@pytest.mark.parametrize('must_change', [True, False])
+def test_filerecord_commit_content_true(
+        tmpdir, initial_state, mode, must_change):
+    """
+    A FileRecord with a content of True will ensure the existence of the file
+    and the mode of the file, but will not change the content of the file.
+    """
+    p = make_path(tmpdir, initial_state)
+    pp = py.path.local(p)
+    fr = runit_sv.FileRecord(p, mode, True)
+    fr.must_change = must_change
+    if pp.exists():
+        content_before = pp.read()
+        fr.commit()
+    elif must_change:
+        with pytest.raises(runit_sv.FileDoesNotExistError):
+            fr.commit()
+        return
+
+    if must_change:
+        assert pp.read() == content_before
+        assert pp.stat().mode & runit_sv.SETTABLE_MASK == mode
         assert fr.changed
     else:
         assert not fr.changed
