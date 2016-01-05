@@ -106,9 +106,15 @@ class FileRecord(object):
                 if e.errno != errno.ENOENT:
                     raise
         elif self.content is True:
-            if not os.path.exists(self.path):
-                raise FileDoesNotExistError(self.path)
-            os.chmod(self.path, self.mode)
+            try:
+                filestat = os.lstat(self.path)
+            except OSError as e:
+                if e.errno == errno.ENOENT:
+                    raise FileDoesNotExistError(self.path)
+                else:
+                    raise
+            if not stat.S_ISLNK(filestat.st_mode):
+                os.chmod(self.path, self.mode)
         else:
             makedirs_exist_ok(os.path.dirname(self.path))
             with tempfile.NamedTemporaryFile(delete=False) as outfile:
