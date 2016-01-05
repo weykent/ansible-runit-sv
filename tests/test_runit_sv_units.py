@@ -263,7 +263,6 @@ def test_filerecord_commit(tmpdir, initial_state, mode, content, must_change):
     'd1/d2/f',
     empty_file('f'),
     simple_file('f', 'spam'),
-    symlink('f', 'target'),
 ])
 @pytest.mark.parametrize('mode', [0o644, 0o755, 0o600, 0o700])
 @pytest.mark.parametrize('must_change', [True, False])
@@ -293,6 +292,32 @@ def test_filerecord_commit_content_true(
         assert not fr.changed
 
 
+@pytest.mark.parametrize('initial_states', [
+    [symlink('s', 'nonextant-target')],
+    [symlink('s', 'f'), empty_file('f')],
+    [symlink('s', 'd'), mkdir('d')],
+])
+@pytest.mark.parametrize('must_change', [True, False])
+def test_filerecord_commit_content_true_on_symlink(
+        initial_states, tmpdir, must_change):
+    """
+    A FileRecord with a content of True will ensure the existence of a symlink,
+    but will not validate if the symlink points to a valid file or change the
+    symlink's target.
+    """
+    ps = [make_path(tmpdir, s) for s in initial_states]
+    p = ps[0]
+    pp = py.path.local(p)
+    fr = runit_sv.FileRecord(p, 0o644, True)
+    fr.must_change = must_change
+    if must_change:
+        link_before = pp.readlink()
+        fr.commit()
+        assert pp.readlink() == link_before
+    else:
+        assert not fr.changed
+
+
 def test_filerecord_propagates_unlink_exceptions(tmpdir):
     """
     If the unlink call in FileRecord's commit method raises an exception that
@@ -301,6 +326,22 @@ def test_filerecord_propagates_unlink_exceptions(tmpdir):
     d = tmpdir.join('d')
     d.mkdir()
     fr = runit_sv.FileRecord(d.strpath, 0o644)
+    fr.must_change = True
+    with pytest.raises(OSError):
+        fr.commit()
+
+
+def test_filerecord_propagates_lstat_exceptions(tmpdir):
+    """
+    If the lstat call in FileRecord's commit method raises an exception that
+    isn't ENOENT, it will be propagated upward.
+    """
+    d = tmpdir.join('d')
+    d.mkdir()
+    f = d.join('f')
+    f.write('')
+    d.chmod(0)
+    fr = runit_sv.FileRecord(f.strpath, 0o644, True)
     fr.must_change = True
     with pytest.raises(OSError):
         fr.commit()
