@@ -116,8 +116,11 @@ class FileRecord(object):
             if not stat.S_ISLNK(filestat.st_mode):
                 os.chmod(self.path, self.mode)
         else:
-            makedirs_exist_ok(os.path.dirname(self.path))
-            with tempfile.NamedTemporaryFile(delete=False) as outfile:
+            outdir = os.path.dirname(self.path)
+            makedirs_exist_ok(outdir)
+            outfile = tempfile.NamedTemporaryFile(
+                dir=outdir, prefix='.tmp', suffix='~', delete=False)
+            with outfile:
                 outfile.write(self.content)
             os.chmod(outfile.name, self.mode)
             os.rename(outfile.name, self.path)
