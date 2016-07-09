@@ -11,7 +11,6 @@ import stat
 import tempfile
 import traceback
 
-
 EXECUTABLE = 0o777
 NONEXECUTABLE = 0o666
 SETTABLE_MASK = 0o7777
@@ -221,9 +220,9 @@ def main(module_cls):
     module = module_cls(
         argument_spec=dict(
             name=dict(required=True),
-            sv_directory=dict(default=['/etc/sv']),
-            service_directory=dict(default=['/service', '/etc/service']),
-            init_d_directory=dict(default=['/etc/init.d']),
+            sv_directory=dict(type='list', default=['/etc/sv']),
+            service_directory=dict(type='list', default=['/service', '/etc/service']),
+            init_d_directory=dict(type='list', default=['/etc/init.d']),
             runscript=dict(required=True),
             log_runscript=dict(),
             supervise_link=dict(),
